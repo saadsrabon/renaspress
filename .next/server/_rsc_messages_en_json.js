@@ -1,0 +1,25 @@
+"use strict";
+/*
+ * ATTENTION: An "eval-source-map" devtool has been used.
+ * This devtool is neither made for production nor for readable output files.
+ * It uses "eval()" calls to create a separate source file with attached SourceMaps in the browser devtools.
+ * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
+ * or disable the default devtool with "devtool: false".
+ * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
+ */
+exports.id = "_rsc_messages_en_json";
+exports.ids = ["_rsc_messages_en_json"];
+exports.modules = {
+
+/***/ "(rsc)/./messages/en.json":
+/*!**************************!*\
+  !*** ./messages/en.json ***!
+  \**************************/
+/***/ ((module) => {
+
+module.exports = JSON.parse('{"common":{"login":"Login","signup":"Sign Up","subscribe":"Subscribe","search":"Search...","email":"Email","password":"Password","name":"Name","confirmPassword":"Confirm Password","forgotPassword":"Forget your password?","dontHaveAccount":"Don\'t have an account?","alreadyHaveAccount":"Already have an account?","yourEmail":"Your Email","yourFullName":"Your Full Name","enterPassword":"Enter your password (8 characters)","enterConfirmPassword":"Enter Your Confirm Password","yourEmailAddress":"Your email address","subscribeToNewsletter":"Subscribe to our newsletter today","back":"Back","share":"Share","bookmark":"Bookmark","viewOriginal":"View Original","loggingIn":"Logging in...","creatingAccount":"Creating account..."},"navigation":{"mainNews":"Main News","economicNews":"Economic News","woman":"Woman","sports":"Sports","charity":"Charity","dailyNews":"Daily News","politicalNews":"Political News","expatriates":"Expatriates","forums":"Forums","saved":"Saved","featuredNews":"Featured News","liveNews":"Live News","weeklyNews":"Weekly News","popularNews":"Popular News","newsletter":"Newsletter"},"news":{"editorOfPress":"Editor of the press","breakingNews":"Breaking News","live":"LIVE","readMore":"Read More","loading":"Loading","refresh":"Refresh","tryAgain":"Try Again","loadMore":"Load More","noMorePosts":"No more posts to load","latestNews":"Latest News","dailyNewsDescription":"Stay updated with the latest daily news and current events","charityDescription":"Stories of hope, compassion, and charitable initiatives making a difference","sportsDescription":"All the latest sports news, scores, and updates from around the world","womanDescription":"News and stories focused on women\'s issues, achievements, and perspectives","politicalNewsDescription":"In-depth political analysis and government news coverage","charityNews":"Charity News","sportsNews":"Sports News","womanNews":"Women\'s News","politicalNews":"Political News","relatedArticles":"Related Articles","relatedArticlesComingSoon":"Related articles coming soon...","categories":{"political":"Political","social":"Social","economics":"Economics","expatriates":"Expatriates"}},"sampleNews":{"title":"Today, the Sudanese Foreign Minister visits the Russian capital","content":"Sudanese Foreign Minister Dr. Ali Youssef Ahmed Al-Sharif begins today, Monday, a three-day official visit to Moscow, at the invitation of his Russian counterpart Sergey Lavrov. This visit comes within the framework of strengthening relations between Sudan and Russia, and exchanging views on regional and international issues."}}');
+
+/***/ })
+
+};
+;
