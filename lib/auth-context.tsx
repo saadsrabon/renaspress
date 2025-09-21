@@ -1,12 +1,20 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { WORDPRESS_CONFIG, getWordPressUrl } from "./wordpress-config"
 
 interface User {
   id: number
+  username: string
   email: string
-  name: string
-  role: string
+  display_name?: string
+  roles?: string[]
+  capabilities?: {
+    can_upload_files?: boolean
+    can_edit_posts?: boolean
+    can_publish_posts?: boolean
+    can_delete_posts?: boolean
+  }
 }
 
 interface AuthContextType {
@@ -25,74 +33,152 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Load user and token from localStorage
   useEffect(() => {
-    // Check for stored auth data on mount
-    const storedToken = localStorage.getItem('renas_token')
-    const storedUser = localStorage.getItem('renas_user')
-    
-    if (storedToken && storedUser) {
-      setToken(storedToken)
-      setUser(JSON.parse(storedUser))
-    }
-    
-    setLoading(false)
-  }, [])
-
-  const login = async (email: string, password: string) => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        setUser(data.user)
-        setToken(data.token)
-        localStorage.setItem('renas_token', data.token)
-        localStorage.setItem('renas_user', JSON.stringify(data.user))
-        return { success: true }
-      } else {
-        return { success: false, error: data.error }
+    const storedToken = localStorage.getItem("renas_token");
+    const storedUser = localStorage.getItem("renas_user");
+  
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (err) {
+        console.error("Failed to parse stored user:", err);
+        localStorage.removeItem("renas_user"); // clean invalid data
       }
-    } catch (error) {
-      console.error('Login error:', error)
-      return { success: false, error: 'Network error' }
-    } finally {
-      setLoading(false)
     }
-  }
+  
+    if (storedToken) setToken(storedToken);
+    setLoading(false);
+  }, []);
+  
+
+  const login = async (usernameOrEmail: string, password: string) => {
+    setLoading(true);
+  
+    try {
+      // Call the JWT plugin REST endpoint
+      const response = await fetch(getWordPressUrl(WORDPRESS_CONFIG.ENDPOINTS.JWT_TOKEN), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: usernameOrEmail, // WordPress allows username or email
+          password: password,
+        }),
+      });
+  
+      const data = await response.json();
+  
+      if (data.token) {
+        // Fetch user details using custom endpoint with enhanced capabilities
+        const userResponse = await fetch(getWordPressUrl(WORDPRESS_CONFIG.ENDPOINTS.USER_INFO), {
+          headers: {
+            "Authorization": `Bearer ${data.token}`,
+          },
+        });
+  
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          
+          // Save user and token locally
+          const user: User = {
+            id: userData.id,
+            username: userData.username,
+            email: userData.email,
+            display_name: userData.display_name,
+            roles: userData.roles,
+            capabilities: userData.capabilities
+          };
+          
+          setUser(user);
+          setToken(data.token);
+    
+          localStorage.setItem("renas_token", data.token);
+          localStorage.setItem("renas_user", JSON.stringify(user));
+    
+          return { success: true };
+        } else {
+          // Fallback to standard WordPress user endpoint
+          const fallbackResponse = await fetch(getWordPressUrl(`${WORDPRESS_CONFIG.ENDPOINTS.USERS}/me`), {
+            headers: {
+              "Authorization": `Bearer ${data.token}`,
+            },
+          });
+          
+          if (fallbackResponse.ok) {
+            const userData = await fallbackResponse.json();
+            
+            const user: User = {
+              id: userData.id,
+              username: userData.username,
+              email: userData.email,
+              display_name: userData.name || userData.display_name,
+              roles: userData.roles || ['subscriber']
+            };
+            
+            setUser(user);
+            setToken(data.token);
+      
+            localStorage.setItem("renas_token", data.token);
+            localStorage.setItem("renas_user", JSON.stringify(user));
+      
+            return { success: true };
+          }
+        }
+        
+        return { success: false, error: "Failed to fetch user details" };
+      } else {
+        return { success: false, error: data.message || "Login failed" };
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      return { success: false, error: "Network error" };
+    } finally {
+      setLoading(false);
+    }
+  };
+  
 
   const register = async (name: string, email: string, password: string, confirmPassword: string) => {
+    if (password !== confirmPassword) {
+      return { success: false, error: "Passwords do not match" }
+    }
+
+    setLoading(true)
     try {
-      setLoading(true)
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name, email, password, confirmPassword }),
+      const res = await fetch("https://renaspress.com/wp-json/react/v1/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: name, email, password, display_name: name }),
       })
 
-      const data = await response.json()
+      const data = await res.json()
 
-      if (data.success) {
+      if (data.success && data.user) {
         setUser(data.user)
-        setToken(data.token)
-        localStorage.setItem('renas_token', data.token)
-        localStorage.setItem('renas_user', JSON.stringify(data.user))
+
+        if (data.token) {
+          // Token returned from WP
+          setToken(data.token)
+          localStorage.setItem("renas_token", data.token)
+          localStorage.setItem("renas_user", JSON.stringify(data.user))
+        } else {
+          // No token, try auto-login
+          const loginRes = await login(email, password)
+          if (!loginRes.success) {
+            localStorage.setItem("renas_user", JSON.stringify(data.user))
+            return { success: true, error: "User created, but auto-login failed" }
+          }
+        }
+
         return { success: true }
       } else {
-        return { success: false, error: data.error }
+        return { success: false, error: data.message || data.error || "Registration failed" }
       }
-    } catch (error) {
-      console.error('Registration error:', error)
-      return { success: false, error: 'Network error' }
+    } catch (err) {
+      console.error("Registration error:", err)
+      return { success: false, error: "Network error" }
     } finally {
       setLoading(false)
     }
@@ -100,19 +186,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       })
-    } catch (error) {
-      console.error('Logout error:', error)
+    } catch (err) {
+      console.error("Logout error:", err)
     } finally {
       setUser(null)
       setToken(null)
-      localStorage.removeItem('renas_token')
-      localStorage.removeItem('renas_user')
+      localStorage.removeItem("renas_token")
+      localStorage.removeItem("renas_user")
     }
   }
 
@@ -125,9 +209,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider")
   return context
 }
-

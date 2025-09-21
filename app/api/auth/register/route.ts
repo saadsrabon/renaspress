@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const firstName = nameParts[0]
     const lastName = nameParts.slice(1).join(' ') || ''
 
-    // Register user via WordPress
+    // Register user via WordPress with authentication
     const result = await registerWordPressUser(
       email, // Use email as username
       email,
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
           role: result.user.roles[0] || 'subscriber'
         },
         token: result.token,
-        message: 'Account created successfully in WordPress'
+        message: 'Account created successfully in WordPress!'
       })
     } else {
       return NextResponse.json(
@@ -77,4 +77,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

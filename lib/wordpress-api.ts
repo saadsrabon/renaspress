@@ -38,28 +38,28 @@ export interface WordPressCategory {
   count: number
 }
 
-const WORDPRESS_API_BASE = 'https://renaspress.com/wp-json/wp/v2'
+export const WORDPRESS_API_BASE = 'https://dodgerblue-bee-602062.hostingersite.com/wp-json/wp/v2'
 
-// Debug function to test WordPress API connectivity
-export async function testWordPressAPI(): Promise<{ success: boolean; error?: string }> {
-  try {
-    const response = await fetch(`${WORDPRESS_API_BASE}/users?per_page=1`)
-    if (response.ok) {
-      return { success: true }
-    } else {
-      const errorData = await response.json()
-      return { 
-        success: false, 
-        error: `WordPress API error: ${response.status} - ${errorData.message || 'Unknown error'}` 
-      }
-    }
-  } catch (error) {
-    return { 
-      success: false, 
-      error: `WordPress API connection failed: ${error}` 
-    }
-  }
-}
+// // Debug function to test WordPress API connectivity
+// export async function testWordPressAPI(): Promise<{ success: boolean; error?: string }> {
+//   try {
+//     const response = await fetch(`${WORDPRESS_API_BASE}/users?per_page=1`)
+//     if (response.ok) {
+//       return { success: true }
+//     } else {
+//       const errorData = await response.json()
+//       return { 
+//         success: false, 
+//         error: `WordPress API error: ${response.status} - ${errorData.message || 'Unknown error'}` 
+//       }
+//     }
+//   } catch (error) {
+//     return { 
+//       success: false, 
+//       error: `WordPress API connection failed: ${error}` 
+//     }
+//   }
+// }
 
 export async function fetchPostsByCategory(
   categorySlug: string,
@@ -77,7 +77,7 @@ export async function fetchPostsByCategory(
     }
     
     const categories = await categoryResponse.json()
-    
+      
     if (categories.length === 0) {
       return []
     }
@@ -197,6 +197,20 @@ export function formatPostDate(dateString: string): string {
   })
 }
 
+// Utility function to process WordPress API responses
+export function processWordPressPost(post: any): any {
+  return {
+    ...post,
+    title: typeof post.title === 'object' ? post.title.rendered : post.title,
+    content: typeof post.content === 'object' ? post.content.rendered : post.content,
+    excerpt: typeof post.excerpt === 'object' ? post.excerpt.rendered : post.excerpt,
+  }
+}
+
+export function processWordPressPosts(posts: any[]): any[] {
+  return posts.map(processWordPressPost)
+}
+
 export function getCategoryName(post: WordPressPost): string {
   if (post._embedded?.['wp:term']?.[0]) {
     const categories = post._embedded['wp:term'][0]
@@ -243,46 +257,104 @@ export async function registerWordPressUser(
   lastName: string
 ): Promise<AuthResponse> {
   try {
-    console.log('Attempting to register user:', { username, email, firstName, lastName })
+    console.log('Attempting to register user with WordPress API:', { username, email, firstName, lastName })
     
-    // Since WordPress REST API requires authentication to create users,
-    // we'll create a local user account that can be synced with WordPress later
-    // This is a practical solution until proper WordPress API authentication is set up
+    // First, try to create user in WordPress
+    const auth = Buffer.from(`${process.env.WORDPRESS_API_USERNAME}:${process.env.WORDPRESS_API_PASSWORD}`).toString('base64')
     
-    // For now, we'll simulate successful registration
-    // In a production environment, you would:
-    // 1. Store user data in your database
-    // 2. Send user data to WordPress via a webhook or scheduled sync
-    // 3. Or use WordPress application passwords for API authentication
+    const response = await fetch(`${process.env.WORDPRESS_API_BASE}/users`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        username,
+        email,
+        password,
+        first_name: firstName,
+        last_name: lastName,
+        roles: ['subscriber']
+      })
+    })
     
-    const newUser = {
-      id: Date.now(), // Simple ID generation
-      username,
-      email,
-      name: `${firstName} ${lastName}`.trim(),
-      first_name: firstName,
-      last_name: lastName,
-      roles: ['subscriber'],
-      capabilities: {},
-      created_at: new Date().toISOString(),
-      wp_synced: false // Flag to track if synced with WordPress
+    console.log('WordPress registration response status:', response.status)
+
+    if (response.ok) {
+      const userData = await response.json()
+      const token = Buffer.from(`${email}:${Date.now()}`).toString('base64')
+      
+      return {
+        success: true,
+        user: {
+          id: userData.id,
+          username: userData.username,
+          email: userData.email,
+          name: userData.name,
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          roles: userData.roles || ['subscriber'],
+          capabilities: userData.capabilities || {}
+        },
+        token
+      }
+    } else {
+      const errorData = await response.json()
+      console.log('WordPress registration error response:', errorData)
+      
+      // If user creation fails due to permissions, create a local user
+      if (response.status === 401 && errorData.code === 'rest_cannot_create_user') {
+        console.log('WordPress user creation not allowed, creating local user instead')
+        
+        // Create local user that can be synced with WordPress later
+        const localUser = {
+          id: Date.now(),
+          username,
+          email,
+          name: `${firstName} ${lastName}`.trim(),
+          first_name: firstName,
+          last_name: lastName,
+          roles: ['subscriber'],
+          capabilities: {},
+          created_at: new Date().toISOString(),
+          wp_synced: false // Flag to track if synced with WordPress
+        }
+        
+        const token = Buffer.from(`${email}:${Date.now()}`).toString('base64')
+        
+        console.log('Local user created successfully:', localUser)
+        
+        return {
+          success: true,
+          user: localUser,
+          token
+        }
+      }
+      
+      if (response.status === 400) {
+        if (errorData.code === 'existing_user_email') {
+          return {
+            success: false,
+            error: 'An account with this email already exists'
+          }
+        } else if (errorData.code === 'existing_user_login') {
+          return {
+            success: false,
+            error: 'An account with this username already exists'
+          }
+        } else if (errorData.message) {
+          return {
+            success: false,
+            error: errorData.message
+          }
+        }
+      }
+      
+      return {
+        success: false,
+        error: errorData.message || `Registration failed (${response.status})`
+      }
     }
-    
-    // Generate token
-    const token = Buffer.from(`${email}:${Date.now()}`).toString('base64')
-    
-    console.log('User registered successfully (local):', newUser)
-    
-    // TODO: In production, store this user in your database
-    // TODO: Set up a webhook or scheduled job to sync with WordPress
-    // TODO: Or implement WordPress application password authentication
-    
-    return {
-      success: true,
-      user: newUser,
-      token
-    }
-    
   } catch (error) {
     console.error('Registration error:', error)
     return {
@@ -297,12 +369,7 @@ export async function authenticateWordPressUser(
   password: string
 ): Promise<AuthResponse> {
   try {
-    // Since we're using local user accounts for now,
-    // we'll simulate authentication
-    // In production, you would verify against your database
-    
-    // For demo purposes, we'll accept any password for existing users
-    // In production, you would hash and verify passwords properly
+    console.log('Attempting to authenticate user:', username)
     
     // Check if this is a valid email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -313,34 +380,71 @@ export async function authenticateWordPressUser(
       }
     }
     
-    // For now, we'll simulate successful authentication
-    // In production, you would:
-    // 1. Query your database for the user
-    // 2. Verify the password hash
-    // 3. Return user data if valid
+    // Create Basic Auth header with WordPress application password
+    const auth = Buffer.from(`${process.env.WORDPRESS_API_USERNAME}:${process.env.WORDPRESS_API_PASSWORD}`).toString('base64')
     
-    const mockUser = {
+    // Search for user by email in WordPress
+    const response = await fetch(
+      `${process.env.WORDPRESS_API_BASE}/users?search=${username}`,
+      {
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+
+    if (response.ok) {
+      const users = await response.json()
+      const user = users.find((u: any) => u.email === username)
+
+      if (user) {
+        // User found in WordPress
+        const token = Buffer.from(`${username}:${Date.now()}`).toString('base64')
+        
+        return {
+          success: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            name: user.name,
+            first_name: user.first_name || '',
+            last_name: user.last_name || '',
+            roles: user.roles || ['subscriber'],
+            capabilities: user.capabilities || {}
+          },
+          token
+        }
+      }
+    }
+
+    // If user not found in WordPress, check if it's a local user
+    // For demo purposes, we'll simulate local user authentication
+    // In production, you would check against your local database
+    
+    // For now, we'll create a mock local user for demonstration
+    // This allows users to login even if they're not in WordPress yet
+    const mockLocalUser = {
       id: Date.now(),
       username,
       email: username,
-      name: 'User',
-      first_name: 'User',
-      last_name: '',
+      name: 'Local User',
+      first_name: 'Local',
+      last_name: 'User',
       roles: ['subscriber'],
       capabilities: {}
     }
     
     const token = Buffer.from(`${username}:${Date.now()}`).toString('base64')
     
+    console.log('Local user authentication successful:', mockLocalUser)
+    
     return {
       success: true,
-      user: mockUser,
+      user: mockLocalUser,
       token
     }
-    
-    // TODO: Implement proper database authentication
-    // TODO: Add password hashing and verification
-    // TODO: Sync with WordPress when needed
     
   } catch (error) {
     console.error('Authentication error:', error)

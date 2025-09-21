@@ -1,9 +1,12 @@
 {
   "/not-found": "app/not-found.js",
-  "/[locale]/political-news/page": "app/[locale]/political-news/page.js",
-  "/[locale]/forums/page": "app/[locale]/forums/page.js",
+  "/[locale]/dashboard/page": "app/[locale]/dashboard/page.js",
+  "/[locale]/page": "app/[locale]/page.js",
+  "/[locale]/dashboard/create/page": "app/[locale]/dashboard/create/page.js",
   "/[locale]/login/page": "app/[locale]/login/page.js",
   "/[locale]/signup/page": "app/[locale]/signup/page.js",
-  "/api/auth/register/route": "app/api/auth/register/route.js",
-  "/[locale]/page": "app/[locale]/page.js"
+  "/[locale]/woman/page": "app/[locale]/woman/page.js",
+  "/[locale]/sports/page": "app/[locale]/sports/page.js",
+  "/[locale]/daily-news/page": "app/[locale]/daily-news/page.js",
+  "/[locale]/charity/page": "app/[locale]/charity/page.js"
 }

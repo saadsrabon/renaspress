@@ -75,10 +75,12 @@ export function Header({ locale }: HeaderProps) {
             <LanguageToggle currentLocale={locale} />
             {user ? (
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 text-sm text-renas-brown-600 dark:text-gray-300">
-                  <User className="h-4 w-4" />
-                  <span>{user.name}</span>
-                </div>
+                <Link href={`/${locale}/dashboard`}>
+                  <Button variant="ghost" size="sm" className="text-renas-brown-600 dark:text-gray-300 hover:text-renas-gold-600">
+                    <User className="h-4 w-4 mr-1" />
+                    Dashboard
+                  </Button>
+                </Link>
                 <Button 
                   onClick={logout} 
                   variant="ghost" 
