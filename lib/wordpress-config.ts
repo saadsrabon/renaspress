@@ -1,7 +1,7 @@
 // WordPress configuration
 export const WORDPRESS_CONFIG = {
   // Change this to your WordPress site URL
-  BASE_URL: 'https://renaspress.com',
+  BASE_URL: 'https://dodgerblue-bee-602062.hostingersite.com',
   
   // API endpoints
   ENDPOINTS: {

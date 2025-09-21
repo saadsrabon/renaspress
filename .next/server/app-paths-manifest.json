@@ -1,12 +1,9 @@
 {
   "/not-found": "app/not-found.js",
-  "/[locale]/dashboard/page": "app/[locale]/dashboard/page.js",
   "/[locale]/page": "app/[locale]/page.js",
+  "/[locale]/dashboard/page": "app/[locale]/dashboard/page.js",
   "/[locale]/dashboard/create/page": "app/[locale]/dashboard/create/page.js",
-  "/[locale]/login/page": "app/[locale]/login/page.js",
-  "/[locale]/signup/page": "app/[locale]/signup/page.js",
-  "/[locale]/woman/page": "app/[locale]/woman/page.js",
-  "/[locale]/sports/page": "app/[locale]/sports/page.js",
-  "/[locale]/daily-news/page": "app/[locale]/daily-news/page.js",
-  "/[locale]/charity/page": "app/[locale]/charity/page.js"
+  "/[locale]/news/[slug]/page": "app/[locale]/news/[slug]/page.js",
+  "/[locale]/dashboard/edit/[id]/page": "app/[locale]/dashboard/edit/[id]/page.js",
+  "/api/posts/[id]/route": "app/api/posts/[id]/route.js"
 }

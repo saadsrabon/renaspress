@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card"
 import { RichTextEditorWrapper } from "@/components/rich-text-editor-wrapper"
 import { MediaInserter } from "@/components/media-inserter"
 import { PostSummary } from "@/components/post-summary"
+import { WORDPRESS_CONFIG, getWordPressUrl } from "@/lib/wordpress-config.ts"
 import { 
   ArrowLeft, 
   Save, 
@@ -183,33 +184,42 @@ export default function CreatePost() {
 
     setSaving(true)
     try {
-      const response = await fetch("https://dodgerblue-bee-602062.hostingersite.com//wp-json/wp/v2/posts", {
+      const response = await fetch(`${WORDPRESS_CONFIG.BASE_URL}${WORDPRESS_CONFIG.ENDPOINTS.POSTS}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
           Authorization: `Bearer ${token}`,
         },
-     
         body: JSON.stringify({
-          title:"Hello",
-          status:"publish",
-          content:'this are the content'
-
+          title,
+          content,
+          excerpt,
+          status,
+          category,
+          tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
+          media: mediaFiles.map(m => ({
+            id: m.id,
+            type: m.type,
+            url: m.url || m.preview,
+            title: m.file.name,
+            size: m.file.size,
+            uploaded_by: user?.id,
+            uploaded_at: new Date().toISOString()
+          }))
         }),
       })
-      console.log(response.json())
-      // if (response.ok) {
-      //   const data = await response.json()
-      //   if (data.success && data.post) {
-      //     router.push(`/${locale}/dashboard/edit/${data.post.id}`)
-      //   } else {
-      //     alert(data.error || "Failed to create post")
-      //   }
-      // } else {
-      //   const error = await response.json()
-      //   alert(error.error || error.message || "Failed to create post")
-      // }
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.post) {
+          router.push(`/${locale}/dashboard/edit/${data.post.id}`)
+        } else {
+          alert(data.error || "Failed to create post")
+        }
+      } else {
+        const error = await response.json()
+        alert(error.error || error.message || "Failed to create post")
+      }
     } catch (error) {
       console.error("Error creating post:", error)
       alert("Failed to create post. Please try again.")

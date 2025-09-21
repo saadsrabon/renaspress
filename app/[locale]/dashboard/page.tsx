@@ -54,7 +54,7 @@ export default function Dashboard() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("posts")
-
+  
   useEffect(() => {
     if (!authLoading && !user) {
       router.push(`/${locale}/login`)
@@ -66,42 +66,70 @@ export default function Dashboard() {
   }, [user, token, authLoading, locale])
 
   const fetchUserPosts = async () => {
-    if (!token) return
-    
+    if (!token) return;
+  
     try {
-      setLoading(true)
-      const response = await fetch("/api/posts/user", {
+      setLoading(true);
+  
+      // Step 1: Get authenticated user info
+      const userResp = await fetch("https://dodgerblue-bee-602062.hostingersite.com/wp-json/wp/v2/users/me", {
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.posts) {
-          // Process WordPress API response to extract rendered content safely
-          const processedPosts = data.posts.map((post: any) => ({
-            ...post,
-            title: safeExtractContent(post.title) || 'Untitled Post',
-            content: safeExtractContent(post.content),
-            excerpt: safeExtractContent(post.excerpt),
-          }))
-          setPosts(processedPosts)
-        } else {
-          console.error('Invalid response format:', data)
-          setPosts([])
-        }
-      } else {
-        console.error('Failed to fetch posts:', response.status)
-        setPosts([])
+      });
+  
+      if (!userResp.ok) {
+        console.error("Failed to fetch user info:", userResp.status, userResp.statusText);
+        setPosts([]);
+        return;
       }
+  
+      const user = await userResp.json();
+      const userId = user.id;
+  
+      // Step 2: Fetch posts created by this user
+      const postsResp = await fetch(`https://dodgerblue-bee-602062.hostingersite.com/wp-json/wp/v2/posts?author=${userId}&_embed=true`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+  
+      if (!postsResp.ok) {
+        console.error("Failed to fetch posts:", postsResp.status, postsResp.statusText);
+        setPosts([]);
+        return;
+      }
+  
+      const postsData = await postsResp.json();
+  
+      // Step 3: Process posts safely
+      const processedPosts = postsData.map((post: any) => ({
+        ...post,
+        title: safeExtractContent(post.title) || "Untitled Post",
+        content: safeExtractContent(post.content),
+        excerpt: safeExtractContent(post.excerpt),
+      }));
+  
+      setPosts(processedPosts);
+  
     } catch (error) {
-      console.error("Error fetching posts:", error)
-      setPosts([])
+      console.error("Error fetching posts:", error);
+      setPosts([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
+  };
+  
+  // Helper function to safely extract rendered content
+  function safeExtractContent(field: any) {
+    if (!field) return null;
+    if (typeof field === "string") return field;
+    if (field.rendered) return field.rendered;
+    return null;
   }
+  
 
   const handleDeletePost = async (postId: number) => {
     if (!confirm("Are you sure you want to delete this post?")) return
